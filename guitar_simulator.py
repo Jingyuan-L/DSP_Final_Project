@@ -9,6 +9,13 @@ import numpy as np
 from math import sin, cos, pi
 from scipy import signal
 
+chords = [[130.81, 164.81, 196, 261.63, 329.63],
+          [146.83, 174.61, 220, 293.66, 349.23],
+          [164.81, 196, 246.94, 311.13, 392],
+          [174.61, 220, 261.63, 349.23, 440],
+          [196, 246.94, 293.66, 392, 493.88],
+          [220, 261.63, 329.63, 440, 523.25]]
+
 BLOCKLEN   = 64        # Number of frames per block
 WIDTH       = 2         # Bytes per sample
 CHANNELS    = 1         # Mono
@@ -17,17 +24,14 @@ MAXVALUE = 2**15-1  # Maximum allowed output signal value (because WIDTH = 2)
 
 # Karplus-Strong paramters
 K = 0.93
-N = 60
+N = 64
 
 # Define input signal
 T = 2.0 # time duration (seconds)
 
-# Buffer to store past signal values. Initialize to zero.
-buffer = np.random.normal(0, 1, N)   # list of zeros
-
 # Parameters
 Ta = 2      # Decay time (seconds)
-fk = [2**(k/12) * 440 for k in range(12)]  # Frequency (Hz)
+fk = chords[0]  # Frequency (Hz)
 # print(fk)
 
 # Pole radius and angle
@@ -41,27 +45,60 @@ a = [[1, -2*r*cos(omi), r**2] for omi in om]
 b = [[r*sin(omi)] for omi in om]
 # print(b)
 ORDER = 2   # filter order
-states = np.zeros((12, ORDER))
-x = np.zeros((12, BLOCKLEN))
-y = np.zeros((12, BLOCKLEN))
+states = np.zeros((5, ORDER))
+x = np.zeros((5, BLOCKLEN))
+y = np.zeros((5, BLOCKLEN))
+buffer = np.zeros((5, BLOCKLEN))
 
 CONTINUE = True
-KEYPRESS = ''
+KEYPRESS = -1
 
 def my_function(event):
-    global CONTINUE
     global KEYPRESS
     print('You pressed ' + event.char)
-    KEYPRESS = event.char
+    if event.char == 'a':
+      KEYPRESS = 0
+    elif event.char == 's':
+        KEYPRESS = 1
+    elif event.char == 'd':
+        KEYPRESS = 2
+    elif event.char == 'f':
+        KEYPRESS = 3
+    elif event.char == ' ':
+        KEYPRESS = 4
 
 
 def fun_chord(chord='C'):
-    global f1
-    print('Up')
+    global fk
+    global r
+    global om
+    global a
+    global b
+
     if chord == 'C':
-        fk = []
+        fk = chords[0]
+    elif chord == 'Dm':
+        fk = chords[1]
+    elif chord == 'Em':
+        fk = chords[2]
+    elif chord == 'F':
+        fk = chords[3]
+    elif chord == 'G':
+        fk = chords[4]
+    elif chord == 'Am':
+        fk = chords[5]
 
+    print(chord, fk)
+    # Pole radius and angle
+    r = 0.01 ** (1.0 / (Ta * RATE))  # 0.01 for 1 percent amplitude
+    om = [2.0 * pi * float(f) / RATE for f in fk]
+    print(om)
 
+    # Filter coefficients (second-order IIR)
+    a = [[1, -2 * r * cos(omi), r ** 2] for omi in om]
+    print(a)
+    b = [[r * sin(omi)] for omi in om]
+    print(b)
 
 def fun_quit():
     global CONTINUE
@@ -109,32 +146,37 @@ stream = p.open(
     frames_per_buffer=128)
 # specify low frames_per_buffer to reduce latency
 
-BLOCKLEN = 512
 output_block = [0] * BLOCKLEN  # create 1D array
 theta = 0
 
 i = 0
 while CONTINUE:
     root.update()
-#
-#     if KEYPRESS != '' and CONTINUE:
-#         i =  ( ord(KEYPRESS) - ord('a') ) % 12
-#         print("The octave of this note is " + str(i+1) )
-#         # Some key (not 'q') was pressed
-#         x[i][0] = 10000.0
-#
-#     [y[i], states[i]] = signal.lfilter(b[i], a[i], x[i], zi = states[i])
-#     y = K * 0.5 * (buffer[i % N] + buffer[(i + 1) % N])
-#     buffer[i % N] = y
-#
-#
-#     x[i][0] = 0.0
-#     KEYPRESS = ''
-#
-#     y[i] = np.clip(y[i].astype(int), -MAXVALUE, MAXVALUE)     # Clipping
-#
-#     binary_data = struct.pack('h' * BLOCKLEN, *map(int, y[i]));    # Convert to binary binary data
-#     stream.write(binary_data, BLOCKLEN)               # Write binary binary data to audio output
+
+    if KEYPRESS != -1 and CONTINUE:
+        i = KEYPRESS
+        x[i][0] = 10000.0
+
+    # print(b[i], a[i])
+    [y[i], states[i]] = signal.lfilter(b[i], a[i], x[i], zi=states[i])
+    # print(y[i])
+
+    if KEYPRESS != -1 and CONTINUE:
+        buffer[i] = y[i]
+    else:
+        for j in range(N):
+            y[i][j] = K * 0.5 * (buffer[i][j] + buffer[i][(j+1) % N])
+            buffer[i][j] = y[i][j]
+
+    # print(buffer)
+
+    x[i][0] = 0.0
+    KEYPRESS = -1
+
+    y[i] = np.clip(y[i].astype(int), -MAXVALUE, MAXVALUE)     # Clipping
+
+    binary_data = struct.pack('h' * BLOCKLEN, *map(int, y[i]))    # Convert to binary binary data
+    stream.write(binary_data, BLOCKLEN)               # Write binary binary data to audio output
 
 print('* Done.')
 
