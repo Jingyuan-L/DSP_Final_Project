@@ -110,15 +110,15 @@ def fun_quit():
 root = Tk.Tk()
 
 # Define widgets
-Label_1 = Tk.Label(root, text='Guitar Simulator')
-Label_chord = Tk.Label(root, text='Choose chord(For Key C) ')
+Label_1 = Tk.Label(root, text='Guitar Chord Simulator')
+Label_chord = Tk.Label(root, text='Choose chord(In C Major) ')
 B_C = Tk.Button(root, text=' C  ', command=lambda: fun_chord(chord='C'))
 B_Dm = Tk.Button(root, text='Dm', command=lambda: fun_chord(chord='Dm'))
 B_Em = Tk.Button(root, text='Em', command=lambda: fun_chord(chord='Em'))
 B_F = Tk.Button(root, text=' F  ', command=lambda: fun_chord(chord='F'))
 B_G = Tk.Button(root, text=' G  ', command=lambda: fun_chord(chord='G'))
 B_Am = Tk.Button(root, text='Am', command=lambda: fun_chord(chord='Am'))
-Label_pluck = Tk.Label(root, text='Press q,w,e,a,s,d on the keyboard as string 1-6 on guitar to play.')
+Label_pluck = Tk.Label(root, text='Press a, s, d, f and space on the keyboard to play notes of the chord.')
 B_quit = Tk.Button(root, text='Quit', command=fun_quit)
 
 # Place widgets
@@ -178,7 +178,6 @@ while CONTINUE:
     binary_data = struct.pack('h' * BLOCKLEN, *map(int, y[i]))    # Convert to binary binary data
     stream.write(binary_data, BLOCKLEN)               # Write binary binary data to audio output
 
-print('* Done.')
 
 # Close audio stream
 stream.stop_stream()
