@@ -158,24 +158,30 @@ while CONTINUE:
         x[i][0] = 10000.0
 
     # print(b[i], a[i])
-    [y[i], states[i]] = signal.lfilter(b[i], a[i], x[i], zi=states[i])
+    for k in range(len(y)):
+        [y[k], states[k]] = signal.lfilter(b[k], a[k], x[k], zi=states[k])
     # print(y[i])
 
     if KEYPRESS != -1 and CONTINUE:
         buffer[i] = y[i]
     else:
-        for j in range(N):
-            y[i][j] = K * 0.5 * (buffer[i][j] + buffer[i][(j+1) % N])
-            buffer[i][j] = y[i][j]
+        for k in range(len(y)):
+            for j in range(N):
+                y[k][j] = K * 0.5 * (buffer[k][j] + buffer[k][(j+1) % N])
+                buffer[k][j] = y[k][j]
 
     # print(buffer)
 
     x[i][0] = 0.0
     KEYPRESS = -1
 
-    y[i] = np.clip(y[i].astype(int), -MAXVALUE, MAXVALUE)     # Clipping
+    total = np.zeros((1, BLOCKLEN))
+    for k in range(len(y[0])):
+        total[0][k] = sum([y[j][k] for j in range(len(y))])
 
-    binary_data = struct.pack('h' * BLOCKLEN, *map(int, y[i]))    # Convert to binary binary data
+    total = np.clip(total.astype(int), -MAXVALUE, MAXVALUE)  # Clipping
+
+    binary_data = struct.pack('h' * BLOCKLEN, *map(int, total[0]))    # Convert to binary binary data
     stream.write(binary_data, BLOCKLEN)               # Write binary binary data to audio output
 
 
